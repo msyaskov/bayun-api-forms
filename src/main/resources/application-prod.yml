@@ -1,0 +1,55 @@
+server:
+  port: 8080
+  reactive:
+    session:
+      cookie:
+        name: sid_forms
+        domain: forms.bayun.dev
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka:8761/eureka
+
+bayun:
+  id:
+    host: https://id.bayun.dev
+    host-internal: http://id:8080
+spring:
+  application:
+    name: 'api-forms'
+  security:
+    oauth2:
+      client:
+        provider:
+          bayun-id:
+            authorization-uri: ${bayun.id.host}/oauth2/authorize
+            token-uri: ${bayun.id.host-internal}/oauth2/token
+            jwk-set-uri: ${bayun.id.host-internal}/oauth2/jwks
+            user-info-uri: ${bayun.id.host-internal}/userinfo
+            user-info-authentication-method: header
+            user-name-attribute: "sub"
+        registration:
+          bayun:
+            provider: bayun-id
+            client-id: api-forms
+            client-secret: secret
+            client-authentication-method: client_secret_basic
+            authorization-grant-type: authorization_code
+            redirect-uri: https://forms.bayun.dev/login/oauth2/code/bayun
+            scope:
+              - openid
+              - profile
+  cloud:
+    gateway:
+      routes:
+        - id: api-gateway
+          uri: lb://api-gateway
+          predicates:
+            - Path=/v1/**
+          filters:
+            - TokenRelay=
+            - RemoveRequestHeader=Cookie
+            - RewritePath=/v1/(?<segment>.*),/api/$\{segment}
+logging:
+  level:
+    root: TRACE
